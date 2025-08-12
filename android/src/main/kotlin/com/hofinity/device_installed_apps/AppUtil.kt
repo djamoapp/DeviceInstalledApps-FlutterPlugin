@@ -9,45 +9,53 @@ import java.util.*
 
 object AppUtil {
 
-    internal fun filterApps(apps: List<ApplicationInfo>,
-                            bundleIdPrefix: String,
-                            includeSystemApps: Boolean,
-                            onlySystemApps: Boolean,
-                            permissions:List<String>,
-                            shouldHasAllPermissions: Boolean): List<ApplicationInfo> {
+    internal fun filterApps(
+        apps: List<ApplicationInfo>,
+        bundleIdPrefix: String,
+        includeSystemApps: Boolean,
+        onlySystemApps: Boolean,
+        permissions: List<String>,
+        shouldHasAllPermissions: Boolean
+    ): List<ApplicationInfo> {
         var innerApps = apps
-        if(onlySystemApps) {
-            innerApps = innerApps.filter {
-                app -> isSystemApp(app.packageName)
+        if (onlySystemApps) {
+            innerApps = innerApps.filter { app ->
+                isSystemApp(app.packageName)
             }
         } else {
-            if (!includeSystemApps) innerApps = innerApps.filter {
-                    app -> !isSystemApp(app.packageName)
+            if (!includeSystemApps) innerApps = innerApps.filter { app ->
+                !isSystemApp(app.packageName)
             }
         }
 
-        if (bundleIdPrefix.isNotEmpty()) innerApps = innerApps.filter {
-                app -> app.packageName.startsWith(bundleIdPrefix.lowercase(Locale.ENGLISH))
+        if (bundleIdPrefix.isNotEmpty()) innerApps = innerApps.filter { app ->
+            app.packageName.startsWith(bundleIdPrefix.lowercase(Locale.ENGLISH))
         }
 
-        if(permissions.isNotEmpty()) innerApps = innerApps.filter {
-                app -> hasPermissions(app.packageName, permissions, shouldHasAllPermissions)
+        if (permissions.isNotEmpty()) innerApps = innerApps.filter { app ->
+            hasPermissions(app.packageName, permissions, shouldHasAllPermissions)
         }
         return innerApps
     }
 
-    private fun hasPermissions(bundleId: String,
-                                permissions:List<String>,
-                                shouldHasAllPermissions: Boolean): Boolean {
+    private fun hasPermissions(
+        bundleId: String,
+        permissions: List<String>,
+        shouldHasAllPermissions: Boolean
+    ): Boolean {
         var shouldInclude = false
         try {
-            val packageInfo = DeviceInstalledAppsPlugin.getContext()!!.packageManager.getPackageInfo(bundleId, PackageManager.GET_PERMISSIONS)
+            val packageInfo =
+                DeviceInstalledAppsPlugin.getContext()!!.packageManager.getPackageInfo(
+                    bundleId,
+                    PackageManager.GET_PERMISSIONS
+                )
             val requestedPermissions = packageInfo.requestedPermissions
             if (requestedPermissions != null) {
-                if(shouldHasAllPermissions) {
+                if (shouldHasAllPermissions) {
                     var count = 0
-                    for(i in requestedPermissions.indices) {
-                        for(permission in permissions) {
+                    for (i in requestedPermissions.indices) {
+                        for (permission in permissions) {
                             if ((requestedPermissions[i] == permission)) {
                                 count++
                                 break
@@ -57,41 +65,59 @@ object AppUtil {
                     shouldInclude = (count == permissions.size)
                 } else {
                     var count = 0
-                    for(i in requestedPermissions.indices) {
-                        for(permission in permissions) {
+                    for (i in requestedPermissions.indices) {
+                        for (permission in permissions) {
                             if ((requestedPermissions[i] == permission)) {
                                 count++
                                 shouldInclude = true
                                 break
                             }
-                            if(count > 0) break
+                            if (count > 0) break
                         }
                     }
                 }
             }
         } catch (e: PackageManager.NameNotFoundException) {
-            Log.e(DeviceInstalledAppsPlugin.TAG, "Error checking permissions ~~~> ${e.localizedMessage}")
+            Log.e(
+                DeviceInstalledAppsPlugin.TAG,
+                "Error checking permissions ~~~> ${e.localizedMessage}"
+            )
             shouldInclude = false
         }
         return shouldInclude
     }
 
     @Suppress("DEPRECATION")
-    fun appToHashMap(app: ApplicationInfo,includeIcon: Boolean): HashMap<String, Any?> {
-        val pm = DeviceInstalledAppsPlugin.getContext()?.packageManager
-        val packageInfo = pm?.getPackageInfo(app.packageName, 0)
-        val map = HashMap<String, Any?>()
-        map["name"] = pm?.getApplicationLabel(app)
-        map["bundleId"] = app.packageName
-        map["versionName"] = packageInfo!!.versionName
-        map["versionCode"] = if (SDK_INT > P) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
-        map["icon"] = if (includeIcon) DrawableUtils.drawableToByteArray(app.loadIcon(pm)) else ByteArray(0)
-        return map
+    fun appToHashMap(app: ApplicationInfo, includeIcon: Boolean): HashMap<String, Any?>? {
+        try {
+            val pm = DeviceInstalledAppsPlugin.getContext()?.packageManager
+            val packageInfo = pm?.getPackageInfo(app.packageName, 0)
+            val map = HashMap<String, Any?>()
+            map["name"] = pm?.getApplicationLabel(app)
+            map["bundleId"] = app.packageName
+            map["versionName"] = packageInfo!!.versionName
+            map["versionCode"] =
+                if (SDK_INT > P) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
+            map["icon"] =
+                if (includeIcon) DrawableUtils.drawableToByteArray(app.loadIcon(pm)) else ByteArray(
+                    0
+                )
+            return map
+        } catch (e: Exception) {
+            Log.e(
+                DeviceInstalledAppsPlugin.TAG,
+                "Trying to get data of an unknown package => ${app.packageName}"
+            )
+            return null;
+        }
     }
 
     internal fun isSystemApp(bundleId: String): Boolean {
         if (bundleId.isBlank()) {
-            Log.e(DeviceInstalledAppsPlugin.TAG, "Error Checking System App ~~~> BundleId is empty!!!")
+            Log.e(
+                DeviceInstalledAppsPlugin.TAG,
+                "Error Checking System App ~~~> BundleId is empty!!!"
+            )
             return false
         }
 //        try {
@@ -102,18 +128,27 @@ object AppUtil {
 //            return false
 //        }
         try {
-            val apps = DeviceInstalledAppsPlugin.getContext()!!.packageManager.getInstalledApplications(0)
+            val apps =
+                DeviceInstalledAppsPlugin.getContext()!!.packageManager.getInstalledApplications(0)
             var count = 0
-            for(i in apps.indices) {
+            for (i in apps.indices) {
                 if ((apps[i].packageName == bundleId)) {
                     count++
                     break
                 }
             }
-            if(count > 0) return DeviceInstalledAppsPlugin.getContext()?.packageManager?.getLaunchIntentForPackage(bundleId) == null
-            else Log.e(DeviceInstalledAppsPlugin.TAG, "Error Checking System App ~~~> BundleId not found")
+            if (count > 0) return DeviceInstalledAppsPlugin.getContext()?.packageManager?.getLaunchIntentForPackage(
+                bundleId
+            ) == null
+            else Log.e(
+                DeviceInstalledAppsPlugin.TAG,
+                "Error Checking System App ~~~> BundleId not found"
+            )
         } catch (e: PackageManager.NameNotFoundException) {
-            Log.e(DeviceInstalledAppsPlugin.TAG, "Error checking permissions ~~~> ${e.localizedMessage}")
+            Log.e(
+                DeviceInstalledAppsPlugin.TAG,
+                "Error checking permissions ~~~> ${e.localizedMessage}"
+            )
         }
         return false
     }

@@ -111,7 +111,7 @@ class DeviceInstalledAppsPlugin(): FlutterPlugin, MethodCallHandler, ActivityAwa
     var apps = context!!.packageManager.getInstalledApplications(0)
     apps = AppUtil.filterApps(apps, bundleIdPrefix, includeSystemApps, onlySystemApps = false,
       permissions, shouldHasAllPermissions)
-    return apps.map { app -> AppUtil.appToHashMap(app, includeIcons) }
+    return apps.map { app -> AppUtil.appToHashMap(app, includeIcons) }.filterNotNull()
   }
 
   private fun getSystemApps(bundleIdPrefix: String,
@@ -121,7 +121,7 @@ class DeviceInstalledAppsPlugin(): FlutterPlugin, MethodCallHandler, ActivityAwa
     var apps = context!!.packageManager.getInstalledApplications(0)
     apps = AppUtil.filterApps(apps, bundleIdPrefix,includeSystemApps = true,
       onlySystemApps = true, permissions, shouldHasAllPermissions)
-    return apps.map { app -> AppUtil.appToHashMap(app, includeIcons) }
+    return apps.map { app -> AppUtil.appToHashMap(app, includeIcons) }.filterNotNull()
   }
 
   private fun getAppsBundleIds(bundleIdPrefix: String,
